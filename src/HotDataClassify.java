@@ -281,10 +281,10 @@ public class HotDataClassify {
 	}
 
 	private String getID(String logEntry) {
-		return logEntry.split(":")[1];
+		return logEntry.split(",")[2];
 	}
 	private int getTime(String logEntry) {
-		return Integer.parseInt(logEntry.split(":")[0]);
+		return Integer.parseInt(logEntry.split(",")[0]);
 	}
 	
 	
