@@ -7,7 +7,7 @@ public class Main {
 			
 		
 		HotDataClassify c = new HotDataClassify();
-		//c.analyze("log.txt");
+		c.analyze("log.txt");
 		c.backward("log.txt", 30);
 		//c.forward("log.txt", 30);
 	} 
