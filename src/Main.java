@@ -7,9 +7,13 @@ public class Main {
 			
 		
 		HotDataClassify c = new HotDataClassify();
-		c.analyze("read.csv");
-		c.backward("read.csv", 30);
+		//c.analyze("read.csv");
+		//c.backward("tpce.csv", 6000);
+		//c.backward("log.requests", 100000);
 		//c.forward("read.csv", 30);
+		c.forward("log.requests", 100000);
+		
+		
 	} 
 	
 	

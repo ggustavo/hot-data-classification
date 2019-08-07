@@ -1,16 +1,21 @@
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.text.DecimalFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+
 
 public class HotDataClassify {
 	
@@ -18,7 +23,6 @@ public class HotDataClassify {
 	private final DecimalFormat df = new DecimalFormat("###,##0.0000");
 	
 	public void backward(String logPah, int k) throws IOException { //Function BackwardClassify(AccessLog L, HotDataSize K)
-
 		HashMap<String, RecordStats> hash = new HashMap<String,RecordStats>(); //initialize hash table
 		
 		BufferedReader log = backwardLog(logPah);
@@ -29,7 +33,7 @@ public class HotDataClassify {
 		
 		RecordStats kthLower = null;
 		
-		int acceptThreshold = 0;
+		long acceptThreshold = 0;
 		
 		//Read back in L to fill H with K unique records with calculated bounds
 		while (hash.size() < k && (logEntry = log.readLine()) != null) {
@@ -40,6 +44,8 @@ public class HotDataClassify {
 			logEntry = logEntry.trim();
 			
 			String rId = getID(logEntry);
+
+
 			int currentTime = getTime(logEntry);
 			
 			if(endTime == -1) {
@@ -64,23 +70,29 @@ public class HotDataClassify {
 			}
 		
 		}
-		acceptThreshold = (int) ( endTime - Math.log(getBaseLog (1 - ALFA, kthLower.getLowerBound() )) );
+
+		acceptThreshold = (long) ( endTime - (  Math.log(kthLower.getLowerBound()) / Math.log(1 - ALFA) )   );
+		if(acceptThreshold < 0) acceptThreshold = endTime;
 		
 		System.out.println("BeginTime:\t" + beginTime);
 		System.out.println("EndTime:\t" + endTime);
 		System.out.println();
-		System.out.println("Backward Initial kthLower:\t" + df.format(kthLower.getLowerBound()));
+		System.out.println("Backward Initial kthLower:\t" + kthLower.getLowerBound());
 		System.out.println("Backward Initial accept Threshold:\t" + acceptThreshold);
-
+		
 		//log.close();
 		//log = openLog(logPah); //Reset Log
 		
 		System.out.println("Backward Initial Hash Table:");
 		System.out.println("----------------------------------- size: " + hash.size());
-		printResult(new ArrayList<>(hash.values()));
+		//printResult(new ArrayList<>(hash.values()));
 		System.out.println("-----------------------------------\n");
 		
+		long count = 0;
+		
 		while((logEntry = log.readLine()) != null) { //while not at beginning of Log do
+			count++;
+			if(count % 10000==0)System.out.println(count+"/"+endTime);
 			
 			if(logEntry == null || logEntry.isEmpty())continue; 
 			logEntry = logEntry.trim();
@@ -134,8 +146,8 @@ public class HotDataClassify {
 				if(hash.size() == k) {
 					break;
 				}
-				acceptThreshold = (int) ( endTime - Math.log(getBaseLog (1 - ALFA, kthLower.getLowerBound() )) );
-				
+				acceptThreshold = (long) ( endTime - (  Math.log(kthLower.getLowerBound()) / Math.log(1 - ALFA) )   );
+				if(acceptThreshold < 0) acceptThreshold = endTime;
 			}
 			
 		}
@@ -143,11 +155,11 @@ public class HotDataClassify {
 		System.out.println("----------Backward Result------------- size: " + hash.size());
 		
 		List<RecordStats> result = new ArrayList<>(hash.values());
+		System.out.println("----------Sort Results ...-------------");
 		result.sort(Comparator.comparing(RecordStats::getCurrentEstimation));
-		printResult(result);
+		
+		saveResult(result);
 		System.out.println("-----------------------------------\n");
-		
-		
 		
 		log.close();
 		
@@ -192,23 +204,29 @@ public class HotDataClassify {
 		List<RecordStats> result = new ArrayList<>(hash.values());
 		result.sort(Comparator.comparing(RecordStats::getCurrentEstimation));
 		
-		
+		List<RecordStats> resultTopK = new ArrayList<>();
 		
 		int count = 0;
-		System.out.println("----------Forward Result-------------");
-		
+		System.out.println("----------Forward Result Top 100 -------------");
 		
 		for (int i = result.size()-1; i >= 0; i--) {
 			RecordStats r = result.get(i);
-			System.out.println("id: " + r.getId() + " \testb: " + df.format(r.getCurrentEstimation()));
+			if(count < 100) {
+				System.out.println("id: " + r.getId() + " \testb: " + df.format(r.getCurrentEstimation()));
+			}
+			resultTopK.add(r);
 			count++;
 			if(count == k) {
+				System.out.println(count);
 				break;
 			}
 		}
 		
+		System.out.println("...");
+		System.out.println("Size: " + resultTopK.size());
+		saveResult(resultTopK);
+	
 		System.out.println("-----------------------------------");
-		
 		log.close();
 	}
 		
@@ -248,18 +266,39 @@ public class HotDataClassify {
 			System.out.println("id: " + r.getId() + " \tFrequency: " + (int)r.getLowerBound());
 		}
 		
+		
 		System.out.println("-----------------------------------");
 		
 		log.close();
 		
 	}
 	
-	private void printResult(List<RecordStats> result) {
-		for (int i = result.size()-1; i >= 0; i--) {
-			RecordStats r = result.get(i);
-			System.out.println("T: " + r.getTime() + " id: " + r.getId() + " \testb: " + df.format(r.getCurrentEstimation()) + "\tlowerBound: " 
-		+ df.format(r.getLowerBound()) + "\tUpperBound: " + df.format(r.getUpperBound()));
+	private void saveResult(List<RecordStats> result) {
+		try {
+			SimpleDateFormat dt = new SimpleDateFormat("yyyy-MM-dd hh-mm");
+			String date = dt.format(new Date());
+			PrintWriter logRequests = new PrintWriter(new FileWriter(new File(date + " stoica" + ".pages"), true));
+
+			for (int i = result.size() - 1; i >= 0; i--) {
+				RecordStats r = result.get(i);
+				// System.out.println("T: " + r.getTime() + " id: " + r.getId() + " \testb: " +
+				// df.format(r.getCurrentEstimation()) + "\tlowerBound: "
+				// + df.format(r.getLowerBound()) + "\tUpperBound: " +
+				// df.format(r.getUpperBound()));
+				
+
+				logRequests.println(r.getId()+",R");
+	
+			}
+
+			logRequests.flush();
+			logRequests.close();
+			
+		} catch (IOException e) {
+
+			e.printStackTrace();
 		}
+
 	}
 	
 	//Bounding Access Frequency Estimates
@@ -281,7 +320,8 @@ public class HotDataClassify {
 	}
 
 	private String getID(String logEntry) {
-		return logEntry.split(",")[2];
+		return logEntry.split(",")[1]; //Use for .requests workloads
+		//return logEntry.split(",")[2]; Use for .csv workloads
 	}
 	private int getTime(String logEntry) {
 		return Integer.parseInt(logEntry.split(",")[0]);
