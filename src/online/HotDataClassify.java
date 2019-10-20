@@ -1,3 +1,4 @@
+package online;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -15,6 +16,8 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+
+import util.ReverseLineInputStream;
 
 
 public class HotDataClassify {
