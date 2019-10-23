@@ -1,4 +1,5 @@
 package online;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -73,8 +74,10 @@ public class HotDataClassify {
 			}
 		
 		}
-
-		acceptThreshold = (long) ( endTime - (  Math.log(kthLower.getLowerBound()) / Math.log(1 - ALFA) )   );
+//te − log(1−α)kthLower
+		acceptThreshold = (long) Math.floor( endTime - Math.pow(Math.log(1 - ALFA), kthLower.getCurrentEstimation())); 
+		
+		//acceptThreshold = (long) ( endTime - (  Math.log(kthLower.getLowerBound()) / Math.log(1 - ALFA) )   );
 		if(acceptThreshold < 0) acceptThreshold = endTime;
 		
 		System.out.println("BeginTime:\t" + beginTime);
@@ -95,6 +98,12 @@ public class HotDataClassify {
 		
 		while((logEntry = log.readLine()) != null) { //while not at beginning of Log do
 			count++;
+			
+			
+			if(count == 50000){
+				System.out.println("c: " + count);
+			}
+			
 			if(count % 10000==0)System.out.println(count+"/"+endTime);
 			
 			if(logEntry == null || logEntry.isEmpty())continue; 
@@ -149,7 +158,10 @@ public class HotDataClassify {
 				if(hash.size() == k) {
 					break;
 				}
-				acceptThreshold = (long) ( endTime - (  Math.log(kthLower.getLowerBound()) / Math.log(1 - ALFA) )   );
+				
+				acceptThreshold = (long) Math.floor( endTime - Math.pow(Math.log(1 - ALFA), kthLower.getCurrentEstimation())); 
+				
+				//acceptThreshold = (long) ( endTime - (  Math.log(kthLower.getLowerBound()) / Math.log(1 - ALFA) )   );
 				if(acceptThreshold < 0) acceptThreshold = endTime;
 			}
 			
@@ -225,6 +237,7 @@ public class HotDataClassify {
 			}
 		}
 		
+		System.out.println(count);
 		System.out.println("...");
 		System.out.println("Size: " + resultTopK.size());
 		saveResult(resultTopK);
